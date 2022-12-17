@@ -1,0 +1,92 @@
+using System.Linq.Expressions;
+
+Console.WriteLine("Hello, World!");
+
+[{ FilterBy: "KlaantNr", FilterValue: "1"}]
+
+
+
+var filters = new List<Filter>()
+            {
+                new Filter() {FilterBy = "name", FilterValue = "x"},
+                new Filter() {FilterBy = "description", FilterValue = ""},
+            };
+
+
+var filter = ItemIdentifierFilterBuilder.Build(filters.Select(x => x.FilterBy).ToArray(), filters.Select(x => x.FilterValue).ToArray(), LogicalOperation.And);
+
+var list = new List<ItemIdentifierRecords>()
+            {
+                new ItemIdentifierRecords() {Name = "xxx", Description = "123"},
+                new ItemIdentifierRecords() {Name = "sdf", Description = "1234"},
+                new ItemIdentifierRecords() {Name = "ttt", Description = "7777"},
+                new ItemIdentifierRecords() {Name = "ttt", Description = "888"},
+                new ItemIdentifierRecords() {Name = "ttt", Description = "999"},
+                new ItemIdentifierRecords() {Name = "xx", Description = "11"}
+            };
+
+var result = list.Where(filter).ToList();
+var re = result;
+
+public class Filter
+{
+    public string FilterBy { get; set; }  //---columnName
+    public string FilterValue { get; set; }  //- filterValue
+
+    public string condition { get; set; } //">"  "<"
+}
+
+public class ItemIdentifierRecords
+{
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string KlantNaame { get; set; }
+    public string Verchil { get; set; }
+}
+
+public enum LogicalOperation
+{
+    And,
+    Or
+}
+
+public class ItemIdentifierFilterBuilder
+{
+    public static Func<ItemIdentifierRecords, bool> Build(string[] searchField, string[] searchFieldValue, LogicalOperation operation)
+    {
+        Expression resultExpression = Expression.Constant(true);
+        var paramExpr = Expression.Parameter(typeof(ItemIdentifierRecords));
+
+        for (var i = 0; i < searchField.Length; i++)
+        {
+            var exp = Expression.Constant(false);
+            var field = searchField[i];
+            var fieldFilterExpression = GetFieldFilterExpression(field, searchFieldValue[i]);
+            if (operation == LogicalOperation.And)
+                resultExpression = Expression.And(resultExpression, Expression.Invoke(fieldFilterExpression, paramExpr));
+            else if (operation == LogicalOperation.Or)
+                resultExpression = Expression.Or(Expression.Invoke(fieldFilterExpression, paramExpr), Expression.Invoke(fieldFilterExpression, paramExpr));
+
+        }
+        return Expression.Lambda<Func<ItemIdentifierRecords, bool>>(resultExpression, paramExpr).Compile();
+    }
+
+    private static Expression<Func<ItemIdentifierRecords, bool>> GetFieldFilterExpression(string field, string fieldValue)
+    {
+        switch (field)
+        {
+            case "name":
+                return x => x.Name.Contains(fieldValue);
+            case "description":
+                return x => x.Description.Contains(fieldValue); //add more expression
+            case "klaantNaam":
+                return x => x.KlantNaame.Contains(fieldValue);
+            case "verchil":
+                if(condition== ">")
+                    //
+                return x => x.Verchil> fieldValue
+            default:
+                throw new NotSupportedException();
+        }
+    }
+}
